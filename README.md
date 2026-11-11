@@ -120,7 +120,7 @@ The checkpoint was saved with Stable-Baselines3 2.9.2 and Gymnasium 1.4.0. See t
 
 This is an **idealized 2D kinematic environment**: circular robot/obstacle geometry, static obstacles, noiseless range sensing, no localization drift, no actuator dynamics, no mapping and no safety-critical controller. The fixed-lag observation buffer does not solve long-horizon partial observability. Physical-robot control and ROS 2 integration are **outside this repository's implemented scope**.
 
-For methodology, trade-offs and reward details, see the [technical brief](docs/PROJECT_BRIEF.md).
+For methodology, trade-offs and reward details, see the [technical brief](docs/PROJECT_BRIEF.md). The [documentation index](docs/README.md) links the complete technical brief, experiment protocol and model card. The [benchmark figure notes](assets/README.md) explain the plotted results.
 
 ---
 
