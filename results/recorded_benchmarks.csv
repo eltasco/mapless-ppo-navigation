@@ -1,6 +1,6 @@
 model,difficulty,obstacles,episodes,successes,success_rate_pct,collisions,timeouts,provenance
-navigation_ppo,hard,2,500,448,89.6,5,47,historical_local_evaluation_not_reproduced_in_release
-navigation_ppo,hard,3,500,471,94.2,18,11,historical_local_evaluation_not_reproduced_in_release
-navigation_ppo,hard,4,500,461,92.2,30,9,historical_local_evaluation_not_reproduced_in_release
-navigation_ppo,hard,5,500,437,87.4,58,5,historical_local_evaluation_not_reproduced_in_release
-navigation_ppo,mixed,5,500,427,85.4,57,16,historical_local_evaluation_not_reproduced_in_release
+navigation_ppo,hard,2,500,448,89.6,5,47,"historical_local_evaluation_not_reproduced_in_release"
+navigation_ppo,hard,3,500,471,94.2,18,11,"historical_local_evaluation_not_reproduced_in_release"
+navigation_ppo,hard,4,500,461,92.2,30,9,"historical_local_evaluation_not_reproduced_in_release"
+navigation_ppo,hard,5,500,437,87.4,58,5,"historical_local_evaluation_not_reproduced_in_release"
+navigation_ppo,mixed,5,500,427,85.4,57,16,"historical_local_evaluation_not_reproduced_in_release"
