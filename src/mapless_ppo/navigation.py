@@ -3,6 +3,8 @@
 This module intentionally preserves the original simulator's state transition,
 observation ordering, and reward computation for compatibility with saved PPO
 policies. It is not a dynamics simulator for a physical quadruped.
+
+A signed forward velocity and yaw rate drive the planar agent. Circular range intersections, collision clearances, and goal-directed reward terms are evaluated in simulator coordinates.
 """
 
 from __future__ import annotations
