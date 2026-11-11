@@ -1,7 +1,4 @@
-"""Mapless local navigation with PPO and multi-frame 2-D LiDAR observations.
-
-The package exposes the Gymnasium adapter, kinematic simulator, and observation-history wrapper as a small public API.
-"""
+"""Mapless local navigation with PPO and multi-frame 2-D LiDAR observations."""
 
 from .environment import GymNavigationEnv
 from .navigation import NavigationEnv

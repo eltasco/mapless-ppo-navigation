@@ -6,9 +6,9 @@
 
 This project trains a continuous-control navigation policy with [Proximal Policy Optimization (PPO)](https://arxiv.org/abs/1707.06347) in a custom **2D robotics simulator**. The policy chooses forward/backward velocity and angular velocity from a compact 360° LiDAR scan, relative goal information and a short observation history. The repository includes the simulator, a **trained PPO checkpoint**, a Gymnasium interface, evaluation tools and an interactive Pygame visualizer.
 
-![Reported navigation success rate for 2–5 obstacles](assets/benchmark_success.png)
+![PPO vs potential-field success rate](assets/ppo_vs_potential.svg)
 
-> **Evaluation transparency:** The success rates shown above were recorded during development using this policy and are preserved as a historical benchmark. They have **not** yet been rerun end-to-end after the code cleanup. The bundled checkpoint is real and was inspected for integrity and architecture; the provided source was checked against the refactored implementation with deterministic scenarios. No real-world deployment is claimed.
+> **Evaluation provenance:** The author ran a paired-seed benchmark locally on 11 November 2026 and supplied its console summary. The table below transcribes those measurements; the original per-episode CSV/JSON files were not uploaded to this repository. The packaged PPO checkpoint is retained unchanged and validated by SHA-256. The comparison is *in-distribution* simulated navigation, not a claim of real-world safety.
 
 ## At a glance
 
@@ -22,20 +22,24 @@ This project trains a continuous-control navigation policy with [Proximal Policy
 | Reward | Goal progress + terminal rewards − time cost − clearance penalty − quadratic closing-speed risk |
 | Reproducibility | Fixed-seed evaluation, episode-level CSV, summary JSON, checkpoint SHA-256 and tests |
 
-## Results
+## Measured PPO vs. classical baseline
 
-The bundled policy was evaluated historically with **500 seeded episodes per configuration**, using the `hard` scene generator and the default obstacle radius of 0.35 m.
+The shipped PPO policy was compared with a **fixed-parameter artificial potential-field controller** on the same seeded `hard` scene configurations (500 episodes per obstacle count and controller, 2,000 scenes evaluated for each controller). Both use goal-relative features and the current simulated 16-beam LiDAR scan; PPO additionally uses a short observation history. The baseline requires no training and is not tuned or presented as a state-of-the-art motion planner.
 
-| Obstacles | Successful episodes | Success | Collisions | Timeouts |
-|--:|--:|--:|--:|--:|
-| 2 | 448 / 500 | **89.6%** | 5 | 47 |
-| 3 | 471 / 500 | **94.2%** | 18 | 11 |
-| 4 | 461 / 500 | **92.2%** | 30 | 9 |
-| 5 | 437 / 500 | **87.4%** | 58 | 5 |
+| Obstacles | PPO success | Potential-field success | PPO collisions | Potential collisions | PPO timeouts | Potential timeouts |
+|:--:|--:|--:|--:|--:|--:|--:|
+| 2 | **448/500 (89.6%)** | 85/500 (17.0%) | 5 | 0 | 47 | 415 |
+| 3 | **471/500 (94.2%)** | 39/500 (7.8%) | 18 | 0 | 11 | 461 |
+| 4 | **461/500 (92.2%)** | 17/500 (3.4%) | 30 | 0 | 9 | 483 |
+| 5 | **437/500 (87.4%)** | 8/500 (1.6%) | 58 | 0 | 5 | 492 |
+| **Total** | **1,817/2,000 (90.85%)** | **149/2,000 (7.45%)** | **111** | **0** | **72** | **1,851** |
 
-A classical baseline and controlled robustness-suite implementation are available below; **no new comparison result is implied until benchmark commands have run**. The historical **two-obstacle case has 47 timeouts (9.4%)** and the five-obstacle case has **58 collisions (11.6%)**.
+PPO achieved **83.4 percentage points** higher aggregate goal-reaching success in this particular evaluation mixture. The potential-field controller never collided in these runs but **timed out in 92.55% of episodes**, so its zero-collision count should not be interpreted as effective navigation or superior safety. PPO itself collided in **11.6% of the five-obstacle episodes**. A conspicuous **47 timeouts at two obstacles** remain unexplained; the scenarios generated for different obstacle counts are not identical distributions.
 
-Detailed provenance is in [Experiments](docs/EXPERIMENTS.md), with the raw summary figures in [recorded_benchmarks.csv](results/recorded_benchmarks.csv). These values are descriptive rather than a guarantee of performance: layouts change when the number of obstacles changes.
+- [Benchmark summary CSV](results/paired_benchmark_summary.csv) and [JSON with provenance](results/paired_benchmark_summary.json) include the reported 95% Wilson confidence intervals, all outcome counts, and experiment settings.
+- [Console output transcript](results/reported_benchmark_output.txt) preserves the figures that were supplied.
+- [Experimental notes](docs/BASELINES_AND_ROBUSTNESS.md) explain interpretation and failure modes.
+- **Per-episode observations, paired outcome contingency counts and trajectories are not published**, because the locally generated `paired_benchmark.csv` and `.json` artifacts were not provided. Only aggregate figures can be independently checked from the transcript.
 
 ## Quick start
 
@@ -90,7 +94,7 @@ python run.py benchmark --controllers ppo --difficulty hard --obstacles 2 --epis
 ```
 
 See [baselines and robustness](docs/BASELINES_AND_ROBUSTNESS.md) for design,
-limitations and confidence intervals. **No out-of-distribution results, real
+limitations, measured in-distribution comparison and confidence intervals. **No out-of-distribution results, real
 robot safety guarantees, or ablation improvements are claimed here.**
 
 ## Training and fine-tuning
@@ -149,7 +153,7 @@ The source and trained checkpoint are available under the [MIT license](LICENSE)
 
 ```text
 mapless-ppo-navigation/
-├── run.py                     # View / evaluate / train CLI
+├── run.py                     # View / evaluate / benchmark / train CLI
 ├── models/
 │   └── navigation_ppo.zip     # Bundled PPO model (Stable-Baselines3 format)
 ├── src/mapless_ppo/
@@ -159,20 +163,23 @@ mapless-ppo-navigation/
 │   ├── scenarios.py           # Obstacle counts and radius randomization
 │   ├── experiments.py         # Training, evaluation and export
 │   ├── visualization.py       # Interactive trajectory inspector
+│   ├── baselines.py           # Potential-field controller
+│   ├── benchmark.py           # Paired evaluation and uncertainty
+│   ├── stress.py              # Noise and scenario distribution shifts
 │   └── cli.py                 # Argument parsing
 ├── tests/                     # Environment, geometry and CLI tests
-├── results/                   # Recorded benchmark and generated metrics
+├── results/                   # Measured comparison summaries and historical metrics
 ├── docs/                      # Technical note, experiments, model details
-└── assets/                    # Benchmark figure
+└── assets/                    # Benchmark figures
 ```
 
 ## Reproducibility and limitations
 
-The checkpoint was saved with Stable-Baselines3 2.9.2 and Gymnasium 1.4.0. See the [model card](docs/MODEL_CARD.md) for its hash, architecture, version metadata and verification status. Evaluation defaults to **500 episodes per configuration with seeds 60000–60499**.
+The checkpoint was saved with Stable-Baselines3 2.9.2 and Gymnasium 1.4.0. See the [model card](docs/MODEL_CARD.md) for its hash, architecture, version metadata and verification status. The local paired-seed run is reported from the author-provided console output, without individual episode artifacts. Evaluation defaults to **500 episodes per configuration with seeds 60000–60499**.
 
 This is an **idealized 2D kinematic environment**: circular robot/obstacle geometry, static obstacles, noiseless range sensing, no localization drift, no actuator dynamics, no mapping and no safety-critical controller. The fixed-lag observation buffer does not solve long-horizon partial observability. Physical-robot control and ROS 2 integration are **outside this repository's implemented scope**.
 
-For methodology, trade-offs and reward details, see the [technical brief](docs/PROJECT_BRIEF.md).
+For methodology, trade-offs and reward details, see the [technical brief](docs/PROJECT_BRIEF.md), [experiment log](docs/EXPERIMENTS.md), and [benchmark interpretation](docs/BASELINES_AND_ROBUSTNESS.md).
 
 ---
 

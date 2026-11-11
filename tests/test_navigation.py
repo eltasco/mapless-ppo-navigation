@@ -1,7 +1,4 @@
-"""Physics, geometry and reward sanity checks.
-
-Geometry tests validate ray-to-circle surface ranges and collision margins; transition tests exercise control limits and goal termination.
-"""
+"""Physics, geometry and reward sanity checks."""
 
 import math
 

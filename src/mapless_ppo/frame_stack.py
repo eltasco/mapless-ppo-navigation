@@ -1,7 +1,4 @@
-"""Fixed-lag frame-history observations for a memoryless PPO MLP policy.
-
-The fixed frame offsets preserve the exact 57-element observation contract of the published policy; changing their order would invalidate checkpoint compatibility.
-"""
+"""Fixed-lag frame-history observations for a memoryless PPO MLP policy."""
 
 from __future__ import annotations
 

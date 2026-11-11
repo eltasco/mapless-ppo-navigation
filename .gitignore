@@ -19,7 +19,9 @@ models/*.zip
 models/*.json
 results/*.csv
 !results/recorded_benchmarks.csv
+!results/paired_benchmark_summary.csv
 results/*.json
+!results/paired_benchmark_summary.json
 results/screenshots/
 *.log
 

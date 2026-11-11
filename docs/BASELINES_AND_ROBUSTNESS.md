@@ -26,7 +26,15 @@ same underlying scenario and initial measurement sequence (with identical
 sensor-corruption seed where enabled). A high success rate alone does not
 imply a collision-free or safe controller.
 
-## 2. Out-of-distribution tests
+## 2. Measured in-distribution comparison
+
+The 11 November 2026 benchmark was run locally and its console output provided for documentation. PPO reached **90.85% (1,817/2,000)** goals versus **7.45% (149/2,000)** for the potential-field baseline across the balanced 2–5-obstacle mixture. PPO collided **111** times (5.55% overall), while the baseline collided **zero** times but timed out **1,851** times (92.55%). This is evidence of better goal-reaching on the **evaluated procedural distribution**, not universal collision avoidance.
+
+The baseline controller's parameters were not optimized against independent validation episodes. Its frequent timeouts are consistent with conservative forward control and local minima but cannot be attributed to a particular dynamic mechanism from aggregate counts alone. The two-obstacle PPO condition also exhibited 47 timeouts. Detailed per-episode analysis would require the generated raw CSV and traces; these were not uploaded. The included 95% Wilson intervals characterize sampling variability for each success proportion, not training seed variability.
+
+[Read the experiment table](EXPERIMENTS.md) or [download the aggregated results](../results/paired_benchmark_summary.csv).
+
+## 3. Out-of-distribution tests
 
 The simulator supports controlled distribution shifts without modifying the
 published checkpoint or default training/evaluation distribution:
@@ -58,7 +66,7 @@ are executed with real dependencies.
 Changing `--radius` on the original generator may change its *layout* as well
 as its disk size; do not interpret that test as isolating radius alone.
 
-## 3. Timeout and oscillation diagnostics
+## 4. Timeout and oscillation diagnostics
 
 ```bash
 python run.py benchmark --controllers ppo --difficulty hard --obstacles 2 --episodes 500 --trace-csv results/timeout_traces.csv --trace-timeouts 5 --csv results/two_obstacles.csv --json results/two_obstacles.json
@@ -79,7 +87,7 @@ compared with 11 in the three-obstacle condition. Because the generators
 differ by obstacle count, this does not establish a monotonic relationship
 between scene difficulty and failure rate.
 
-## 4. Uncertainty and provenance
+## 5. Uncertainty and provenance
 
 Each row reports successes, collisions and timeouts separately. For `k`
 successes out of `n` episodes, the reported Wilson score interval is a

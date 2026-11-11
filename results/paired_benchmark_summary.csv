@@ -1,0 +1,9 @@
+controller,difficulty,layout,obstacles,episodes,successes,success_rate_pct,wilson95_low_pct_rounded,wilson95_high_pct_rounded,collisions,timeouts,provenance
+ppo,hard,original,2,500,448,89.6,86.6,92.0,5,47,user_supplied_local_benchmark_stdout_2026-11-11
+potential,hard,original,2,500,85,17.0,14.0,20.5,0,415,user_supplied_local_benchmark_stdout_2026-11-11
+ppo,hard,original,3,500,471,94.2,91.8,95.9,18,11,user_supplied_local_benchmark_stdout_2026-11-11
+potential,hard,original,3,500,39,7.8,5.8,10.5,0,461,user_supplied_local_benchmark_stdout_2026-11-11
+ppo,hard,original,4,500,461,92.2,89.5,94.2,30,9,user_supplied_local_benchmark_stdout_2026-11-11
+potential,hard,original,4,500,17,3.4,2.1,5.4,0,483,user_supplied_local_benchmark_stdout_2026-11-11
+ppo,hard,original,5,500,437,87.4,84.2,90.0,58,5,user_supplied_local_benchmark_stdout_2026-11-11
+potential,hard,original,5,500,8,1.6,0.8,3.1,0,492,user_supplied_local_benchmark_stdout_2026-11-11

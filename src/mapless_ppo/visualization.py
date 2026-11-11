@@ -1,7 +1,4 @@
-"""Interactive Pygame rollout inspector, loaded only when requested.
-
-The viewer renders trained-policy rollouts, LiDAR rays, obstacles, and target geometry; it does not update policy weights during inspection.
-"""
+"""Interactive Pygame rollout inspector, loaded only when requested."""
 
 from __future__ import annotations
 

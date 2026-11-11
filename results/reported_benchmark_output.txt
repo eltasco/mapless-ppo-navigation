@@ -1,0 +1,11 @@
+# Captured output supplied by project author, 2026-11-11
+# Not produced or rerun by the repository packaging process.
+ppo       | 2 hard / original | success 448/500 (89.6%, Wilson 95%: 86.6–92.0%) | collisions 5 | timeouts 47
+potential | 2 hard / original | success 85/500 (17.0%, Wilson 95%: 14.0–20.5%) | collisions 0 | timeouts 415
+ppo       | 3 hard / original | success 471/500 (94.2%, Wilson 95%: 91.8–95.9%) | collisions 18 | timeouts 11
+potential | 3 hard / original | success 39/500 (7.8%, Wilson 95%: 5.8–10.5%) | collisions 0 | timeouts 461
+ppo       | 4 hard / original | success 461/500 (92.2%, Wilson 95%: 89.5–94.2%) | collisions 30 | timeouts 9
+potential | 4 hard / original | success 17/500 (3.4%, Wilson 95%: 2.1–5.4%) | collisions 0 | timeouts 483
+ppo       | 5 hard / original | success 437/500 (87.4%, Wilson 95%: 84.2–90.0%) | collisions 58 | timeouts 5
+potential | 5 hard / original | success 8/500 (1.6%, Wilson 95%: 0.8–3.1%) | collisions 0 | timeouts 492
+Saved results/paired_benchmark.csv, results/paired_benchmark.json

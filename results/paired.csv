@@ -1,0 +1,9 @@
+controller,stage,obstacles,seed,layout,radius_m,noise_std_m,dropout,outcome,steps,reward,path_length_m,min_clearance_m,low_speed_fraction,velocity_sign_flips,end_goal_distance_m
+potential,hard,2,60000,uniform,0.35,0.03,0.03,success,175,11.750554,2.796555,0.345966,0.0,0,0.236536
+potential,hard,2,60001,uniform,0.35,0.03,0.03,timeout,900,-3.006596,2.353837,0.298476,0.715556,0,1.978874
+potential,hard,2,60002,uniform,0.35,0.03,0.03,success,214,11.451501,2.514651,0.282649,0.126168,0,0.249169
+potential,hard,2,60003,uniform,0.35,0.03,0.03,success,194,11.92791,2.740948,0.371183,0.072165,0,0.239523
+potential,hard,3,60000,uniform,0.35,0.03,0.03,success,489,8.8806,2.738873,0.231088,0.519427,0,0.233776
+potential,hard,3,60001,uniform,0.35,0.03,0.03,timeout,900,-3.032566,2.456514,0.29207,0.698889,0,1.952694
+potential,hard,3,60002,uniform,0.35,0.03,0.03,success,518,7.349527,3.007674,0.189624,0.46332,0,0.244578
+potential,hard,3,60003,uniform,0.35,0.03,0.03,success,193,11.929112,2.734151,0.376485,0.067358,0,0.241655

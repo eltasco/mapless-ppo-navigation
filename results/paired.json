@@ -1,0 +1,58 @@
+{
+  "status": "newly_measured_not_historical",
+  "model": null,
+  "model_sha256": null,
+  "seed_start": 60000,
+  "episodes_per_configuration": 4,
+  "stage": "hard",
+  "obstacle_counts": [
+    2,
+    3
+  ],
+  "layout": "uniform",
+  "noise_std_m": 0.03,
+  "dropout_probability": 0.03,
+  "radius_spec": "original",
+  "controller_comparison": {
+    "attraction": 1.0,
+    "repulsion": 0.24,
+    "influence_radius": 1.15,
+    "turn_gain": 2.4,
+    "forward_gain": 0.85,
+    "slowdown_distance": 0.65
+  },
+  "summaries": [
+    {
+      "controller": "potential",
+      "stage": "hard",
+      "obstacles": 2,
+      "layout": "uniform",
+      "episodes": 4,
+      "success": 3,
+      "collision": 0,
+      "timeout": 1,
+      "success_rate_pct": 75.0,
+      "wilson95_low_pct": 30.06,
+      "wilson95_high_pct": 95.44,
+      "mean_steps": 370.75,
+      "mean_reward": 8.0308
+    },
+    {
+      "controller": "potential",
+      "stage": "hard",
+      "obstacles": 3,
+      "layout": "uniform",
+      "episodes": 4,
+      "success": 3,
+      "collision": 0,
+      "timeout": 1,
+      "success_rate_pct": 75.0,
+      "wilson95_low_pct": 30.06,
+      "wilson95_high_pct": 95.44,
+      "mean_steps": 525.0,
+      "mean_reward": 6.2817
+    }
+  ],
+  "paired_outcomes": [],
+  "limitations": "Idealized kinematics and static circular obstacles, even under layout/noise stress tests."
+}

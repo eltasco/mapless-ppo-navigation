@@ -1,7 +1,4 @@
-"""Episode-level domain randomization of obstacle count and radius.
-
-Episode randomization supports obstacle-count curricula and controlled radius sweeps without changing policy input dimensions.
-"""
+"""Episode-level domain randomization of obstacle count and radius."""
 
 from __future__ import annotations
 

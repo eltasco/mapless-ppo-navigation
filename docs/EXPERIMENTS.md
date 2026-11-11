@@ -6,9 +6,34 @@
 
 During development, the experiments progressed through single-obstacle navigation, frame-history observations, mixed scene difficulty, risk-aware reward shaping, multi-obstacle fine-tuning and finally randomized 2–5-obstacle counts with a reduced learning rate. A larger learning rate in the final randomized-obstacle phase had previously degraded generalization; selecting a conservative fine-tuning rate yielded the published model.
 
+## Local paired PPO vs. potential-field benchmark (11 November 2026)
+
+The author supplied the console output of:
+
+```bash
+python run.py benchmark --controllers both --difficulty hard --obstacles 2-5 --episodes 500
+```
+
+This runs the **published PPO checkpoint and the untuned potential-field baseline** on the same seed range per obstacle-count setting. The supplied output records the following values (500 episodes for each controller/scenario):
+
+| Obstacles | Controller | Successes | Collisions | Timeouts | Wilson 95% success interval |
+|--:|:--|--:|--:|--:|:--|
+| 2 | PPO | 448 | 5 | 47 | 86.6–92.0% |
+| 2 | Potential field | 85 | 0 | 415 | 14.0–20.5% |
+| 3 | PPO | 471 | 18 | 11 | 91.8–95.9% |
+| 3 | Potential field | 39 | 0 | 461 | 5.8–10.5% |
+| 4 | PPO | 461 | 30 | 9 | 89.5–94.2% |
+| 4 | Potential field | 17 | 0 | 483 | 2.1–5.4% |
+| 5 | PPO | 437 | 58 | 5 | 84.2–90.0% |
+| 5 | Potential field | 8 | 0 | 492 | 0.8–3.1% |
+
+Across the equally weighted set of four scenario configurations, PPO reached 1,817/2,000 goals (90.85%), while the potential-field baseline reached 149/2,000 (7.45%). The latter recorded no collisions but timed out 1,851 times; PPO collided 111 times and timed out 72 times. These are **observational comparisons for this simulated distribution**, not an ablation establishing the causal benefit of observation history or the risk reward term.
+
+The archived results are a **transcription of the supplied local console output** (not an independent rerun in the repository packaging environment). See [`paired_benchmark_summary.csv`](../results/paired_benchmark_summary.csv), [`paired_benchmark_summary.json`](../results/paired_benchmark_summary.json), and [console output](../results/reported_benchmark_output.txt). The underlying raw per-episode `paired_benchmark.csv/json` files were not supplied, so individual trajectories, paired discordance counts, per-episode variance, and statistical paired tests are not reported.
+
 ## Reported results
 
-The following results were measured during development (500 evaluation episodes per row). They are **historical records** and should be compared against a new evaluation performed on this cleaned code, not described as an automated CI benchmark.
+The following values were also recorded earlier during development (500 evaluation episodes per row). The latest user-run paired benchmark reproduces the four PPO `hard` rows in its console summary. The `mixed` row remains historical and has not been independently rerun.
 
 | Difficulty | Obstacles | Success | Collision | Timeout |
 |---|---:|---:|---:|---:|
