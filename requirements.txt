@@ -3,3 +3,4 @@ numpy>=2.0,<3
 gymnasium>=1.4,<2
 stable-baselines3>=2.9.2,<3
 pygame>=2.5,<3
+# For the full project and test suite, use: python -m pip install -e ".[test]"
