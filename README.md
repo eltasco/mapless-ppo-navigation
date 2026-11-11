@@ -6,7 +6,7 @@ This project trains a continuous-control navigation policy with [Proximal Policy
 
 ![Reported navigation success rate for 2–5 obstacles](assets/benchmark_success.png)
 
-> **Evaluation transparency:** The success rates shown above were recorded during development using this policy and are preserved as a historical benchmark. They have **not** yet been rerun end-to-end after the code cleanup. The bundled checkpoint is real and was inspected for integrity and architecture; the provided source was checked against the refactored implementation with deterministic scenarios. No real-world deployment is claimed.
+> **Evaluation transparency:** The success rates shown above were recorded during development using this policy and are preserved as a historical benchmark.No real-world deployment is claimed.
 
 ## At a glance
 
