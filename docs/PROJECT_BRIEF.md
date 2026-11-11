@@ -47,3 +47,7 @@ Evaluation uses `model.predict(..., deterministic=True)` and records success, co
 **What this does not model:** moving obstacles, stochastic LiDAR errors, dynamics/traction, actuation delay, SLAM, global path planning, 3D geometry, end-to-end safety and physical robot operation. The scene generator also does not guarantee a globally collision-free route for every sampled layout.
 
 For checkpoint provenance and precise reproducibility caveats, see [MODEL_CARD.md](MODEL_CARD.md) and [EXPERIMENTS.md](EXPERIMENTS.md).
+
+## Implementation map
+
+The core kinematic and range-sensing logic is in [`navigation.py`](../src/mapless_ppo/navigation.py); the Gymnasium interface and procedural scenes are in [`environment.py`](../src/mapless_ppo/environment.py). The temporal observation adapter is implemented in [`frame_stack.py`](../src/mapless_ppo/frame_stack.py), while [`experiments.py`](../src/mapless_ppo/experiments.py) provides policy loading, training and evaluation.
