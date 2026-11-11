@@ -1,187 +1,133 @@
 # Mapless Robot Navigation with PPO
 
-**Goal-directed obstacle avoidance from sparse simulated LiDAR, without a pre-built map.**
+**Goal-directed obstacle avoidance from sparse simulated LiDAR and relative goal observations.**
 
-**Scope:** controlled planar simulation, not a certified safe robot controller. The environment has ideal kinematics, noiseless range readings by default, circular static obstacles, and no walls. The model occasionally collides or times out.
+A compact, reproducible **2D robotics simulation** built with Gymnasium and Stable-Baselines3. The project includes a trained PPO checkpoint, an interactive Pygame viewer, procedural navigation scenes, a classical potential-field baseline, and tools for reproducible evaluation, stress testing and ablations.
 
-This project trains a continuous-control navigation policy with [Proximal Policy Optimization (PPO)](https://arxiv.org/abs/1707.06347) in a custom **2D robotics simulator**. The policy chooses forward/backward velocity and angular velocity from a compact 360° LiDAR scan, relative goal information and a short observation history. The repository includes the simulator, a **trained PPO checkpoint**, a Gymnasium interface, evaluation tools and an interactive Pygame visualizer.
+![PPO goal-reaching rates in the original simulation](assets/benchmark_success.png)
 
-![PPO vs potential-field success rate](assets/ppo_vs_potential.svg)
+## System overview
 
-> **Evaluation provenance:** The author ran a paired-seed benchmark locally on 11 November 2026 and supplied its console summary. The table below transcribes those measurements; the original per-episode CSV/JSON files were not uploaded to this repository. The packaged PPO checkpoint is retained unchanged and validated by SHA-256. The comparison is *in-distribution* simulated navigation, not a claim of real-world safety.
+| Component | Design |
+|---|---|
+| Observations | Goal distance, sine/cosine of goal bearing, 16 simulated 360° LiDAR measurements (19 values) |
+| History | Three observations at t−20, t−10 and t (57 values) |
+| Policy | PPO actor–critic MLP, two 64×64 hidden layers per network |
+| Actions | Signed forward/backward velocity and yaw rate |
+| Environment | Deterministic 2D kinematics at 30 Hz, circular static obstacles, procedural scenes |
+| Evaluation | Fixed-seed episodes, per-episode CSV/JSON, Wilson confidence intervals, failure traces |
+| Baselines | Original untuned field and a redesigned, validation-tunable field |
 
-## At a glance
+## Reference PPO results
 
-| Area | Implementation |
-|:--|:--|
-| Learning algorithm | PPO actor–critic with MLP policies (64–64 hidden units for each network) |
-| Perception | 16 idealized LiDAR rays over 360° (3 m range), goal distance, sine/cosine of relative goal bearing |
-| Observation history | Three 19-dimensional frames at **t−20, t−10 and t**, forming a **57D** vector |
-| Continuous control | Signed linear velocity ±0.6 m/s; angular velocity ±1.5 rad/s |
-| Environment | Gymnasium, 30 Hz, randomized goals and 1–5 circular static obstacles |
-| Reward | Goal progress + terminal rewards − time cost − clearance penalty − quadratic closing-speed risk |
-| Reproducibility | Fixed-seed evaluation, episode-level CSV, summary JSON, checkpoint SHA-256 and tests |
+The included `models/navigation_ppo.zip` is a **frozen checkpoint**. Its recorded results on the original procedural `hard` scene family were:
 
-## Measured PPO vs. classical baseline
+| Obstacles | Goals reached | Collisions | Timeouts |
+|---:|---:|---:|---:|
+| 2 | 448/500 (89.6%) | 5 | 47 |
+| 3 | 471/500 (94.2%) | 18 | 11 |
+| 4 | 461/500 (92.2%) | 30 | 9 |
+| 5 | 437/500 (87.4%) | 58 | 5 |
 
-The shipped PPO policy was compared with a **fixed-parameter artificial potential-field controller** on the same seeded `hard` scene configurations (500 episodes per obstacle count and controller, 2,000 scenes evaluated for each controller). Both use goal-relative features and the current simulated 16-beam LiDAR scan; PPO additionally uses a short observation history. The baseline requires no training and is not tuned or presented as a state-of-the-art motion planner.
+These are **simulation-only, in-distribution** results. Notably, the five-obstacle experiment includes an 11.6% collision rate; the two-obstacle experiment contains 47 timeouts. The generator frequently positions obstacles near the start–goal segment, and separate obstacle counts are not identical scene distributions.
 
-| Obstacles | PPO success | Potential-field success | PPO collisions | Potential collisions | PPO timeouts | Potential timeouts |
-|:--:|--:|--:|--:|--:|--:|--:|
-| 2 | **448/500 (89.6%)** | 85/500 (17.0%) | 5 | 0 | 47 | 415 |
-| 3 | **471/500 (94.2%)** | 39/500 (7.8%) | 18 | 0 | 11 | 461 |
-| 4 | **461/500 (92.2%)** | 17/500 (3.4%) | 30 | 0 | 9 | 483 |
-| 5 | **437/500 (87.4%)** | 8/500 (1.6%) | 58 | 0 | 5 | 492 |
-| **Total** | **1,817/2,000 (90.85%)** | **149/2,000 (7.45%)** | **111** | **0** | **72** | **1,851** |
+An initial, exploratory PPO comparison used an **untuned, forward-only potential-field controller**. Its 7.45% aggregate goal-reaching rate was accompanied by 92.55% timeouts. That result is **not** evidence that PPO outperforms a well-tuned classical planner. The historical figures are retained in [`results/`](results/), clearly separated from the revised field and its not-yet-run validation. See [data provenance](docs/DATA_PROVENANCE.md).
 
-PPO achieved **83.4 percentage points** higher aggregate goal-reaching success in this particular evaluation mixture. The potential-field controller never collided in these runs but **timed out in 92.55% of episodes**, so its zero-collision count should not be interpreted as effective navigation or superior safety. PPO itself collided in **11.6% of the five-obstacle episodes**. A conspicuous **47 timeouts at two obstacles** remain unexplained; the scenarios generated for different obstacle counts are not identical distributions.
+## Install and run
 
-- [Benchmark summary CSV](results/paired_benchmark_summary.csv) and [JSON with provenance](results/paired_benchmark_summary.json) include the reported 95% Wilson confidence intervals, all outcome counts, and experiment settings.
-- [Console output transcript](results/reported_benchmark_output.txt) preserves the figures that were supplied.
-- [Experimental notes](docs/BASELINES_AND_ROBUSTNESS.md) explain interpretation and failure modes.
-- **Per-episode observations, paired outcome contingency counts and trajectories are not published**, because the locally generated `paired_benchmark.csv` and `.json` artifacts were not provided. Only aggregate figures can be independently checked from the transcript.
-
-## Quick start
-
-**Requirements:** Python 3.11+ (Python 3.12 recommended), with PyTorch installed automatically by Stable-Baselines3. The repository is CPU-compatible; a GPU is not required.
+Python 3.11+ is required. From the project root:
 
 ```bash
 python -m pip install -e ".[test]"
 python -m pytest
-```
-
-Run the **included trained policy** in the visualizer:
-
-```bash
 python run.py view best hard 5
 ```
 
-Run deterministic evaluation for 2–5 obstacles, saving per-episode and summary files:
+The shipped model is in `models/navigation_ppo.zip`. **Do not extract it.** Viewer controls: `N` next episode, `R` replay, `SPACE` pause, `L` LiDAR, `S` screenshot, `ESC` close.
+
+Evaluate the reference checkpoint, writing actual per-episode data:
 
 ```bash
-python run.py eval best hard 2-5 --episodes 500 --csv results/evaluation.csv --json results/evaluation.json
+python run.py eval best hard 2-5 --episodes 500 --csv results/ppo_eval.csv --json results/ppo_eval.json
 ```
 
-Visualize a smaller scenario or change obstacle radius:
+## Classical baseline: tune first, test second
+
+`potential_legacy` reproduces the original untuned controller. The revised `potential` uses **capped obstacle repulsion, tangential bypass and optional reverse motion**. Its default gains are illustrative; the program labels them *untuned* unless passed a validated configuration.
 
 ```bash
-python run.py view best hard 3
-python run.py eval best hard_passable 5 0.50
+# Select gains exclusively on a separate validation seed interval.
+python run.py tune-baseline --difficulty hard --obstacles 2-5 --seed-start 30000 --episodes 30 --output configs/potential_validated.json
+
+# Compare both controllers on held-out scenes using the selected gains.
+python run.py benchmark --controllers both --baseline-config configs/potential_validated.json --difficulty hard --obstacles 2-5 --episodes 500 --seed-start 60000 --csv results/paired_benchmark.csv --json results/paired_benchmark.json
+
+# Verify that individual CSV outcomes match the JSON summary.
+python scripts/check_episode_artifacts.py results/paired_benchmark.csv results/paired_benchmark.json
+
+# Reproduce the historical (untuned) baseline, explicitly distinguished.
+python run.py benchmark --controllers both_legacy --difficulty hard --obstacles 2-5 --episodes 500
 ```
 
-**Viewer controls:** `N` next episode · `R` replay · `SPACE` pause · `L` LiDAR visibility · `S` screenshot · `ESC` quit.
+No post-calibration test results have been added to the repository yet; comparison claims must await a fresh completed run.
 
-The packaged policy is located at `models/navigation_ppo.zip`. **Leave it zipped:** the file is a Stable-Baselines3 model checkpoint, not an archive to extract. For a named console script, use `mapless-ppo view best hard 5` after installing the project.
+## Stress testing, ablations and timeout analysis
 
-## Classical baseline, robustness and failure analysis
-
-A deterministic **artificial potential-field baseline** observes the same goal and
-16 LiDAR ranges as PPO. Its gains are fixed, and it can fail due to local minima.
-A paired evaluation uses identical scenario seeds and writes per-episode CSV,
-95% Wilson intervals, and paired success/failure counts:
+`eval` and `benchmark` share an episode runner and support **19D or 57D** policies, sensor noise and new obstacle layouts:
 
 ```bash
-python run.py benchmark --controllers both --difficulty hard --obstacles 2-5 --episodes 500 --csv results/paired.csv --json results/paired.json
+# Alternative obstacle placement, without the default forced midpoint obstacle.
+python run.py eval best hard 5 --layout uniform --episodes 500 --csv results/ood_uniform.csv
+
+# Goal distance 3.5–5.0 m and changed obstacle sampling.
+python run.py eval best hard 5 --layout long_goal --episodes 500 --csv results/ood_long_goal.csv
+
+# Gaussian LiDAR range noise (meters), plus dropout.
+python run.py eval best hard 5 --lidar-noise 0.05 --dropout 0.05 --episodes 500 --csv results/ood_noise.csv
+
+# A separately trained 19D policy can use the same benchmark and stress tools.
+python run.py benchmark --controllers ppo --model models/ablation_no_history_seed42.zip --history single --layout uniform --difficulty hard --obstacles 2-5 --episodes 500
+
+# Capture and summarize the 2-obstacle failure distribution.
+python run.py benchmark --controllers ppo --difficulty hard --obstacles 2 --episodes 500 --csv results/two_obstacles.csv --trace-csv results/timeout_traces.csv --trace-timeouts 10
+python scripts/timeout_summary.py results/two_obstacles.csv --obstacles 2
 ```
 
-Stress the **measurement** and **layout** distributions independently of the
-training distribution:
+The commands above are **experimental protocols**, not already-measured out-of-distribution results.
+
+For independent training ablations (full, no history, no risk term) with three random seeds each:
 
 ```bash
-python run.py benchmark --controllers both --difficulty hard --obstacles 5 --layout uniform --episodes 500
-python run.py benchmark --controllers both --difficulty hard --obstacles 5 --lidar-noise 0.05 --dropout 0.05 --episodes 500
-python run.py benchmark --controllers ppo --difficulty hard --obstacles 2 --episodes 500 --trace-csv results/timeout_traces.csv
+python scripts/run_ablations.py            # Preview all nine jobs.
+python scripts/run_ablations.py --execute  # Explicitly train and evaluate.
 ```
 
-See [baselines and robustness](docs/BASELINES_AND_ROBUSTNESS.md) for design,
-limitations, measured in-distribution comparison and confidence intervals. **No out-of-distribution results, real
-robot safety guarantees, or ablation improvements are claimed here.**
-
-## Training and fine-tuning
+New training can select checkpoints on fixed **multi-obstacle validation seeds** (50 episodes per obstacle count by default), not a noisy single 10-episode five-obstacle sample:
 
 ```bash
-# Train a new policy from scratch
-python run.py train scratch mixed 2-5 200000 models/new_policy --lr 0.0003
-
-# Fine-tune the supplied model without overwriting the published checkpoint
-python run.py train best mixed 2-5 10000 models/finetuned_policy --lr 0.0001
+python run.py train scratch mixed 2-5 200000 models/new_policy --eval-every 10000 --validation-episodes 50 --tensorboard-log runs
 ```
 
-For **controlled ablations**, use `--history single` (19D instead of 57D) or
-`--risk-weight 0` (remove closing-speed risk shaping), and train new models.
-For example:
+Optional `--observation-scale fixed` scales metric distances for **newly trained models only**. The released policy requires **raw 57-dimensional observations**. Incompatible preprocessing is rejected using the released model identity and training sidecar metadata.
 
-```bash
-python -m pip install -e ".[test,logging]"
-python run.py train scratch mixed 2-5 200000 models/ablation_no_risk --risk-weight 0 --eval-every 10000 --tensorboard-log runs
-# tensorboard --logdir runs
-```
-
-See the [ablation protocol](docs/ABLATIONS.md) for full commands, matched seeds,
-and how to evaluate the models fairly. The published checkpoint records 190,464
-cumulative timesteps, but its original intermediate checkpoint sequence and
-TensorBoard logs are unavailable: the simple scratch command is **not** an
-exact reproduction of its historical training procedure.
-
-Training writes checkpoints into `models/checkpoints/` and a JSON sidecar for hyperparameters. Existing model paths are not overwritten automatically. PPO trains in rollout batches, so the final number of environment steps may exceed the requested count.
-
-## Architecture
+## Architecture and limitations
 
 ```mermaid
 flowchart LR
-    A[Randomized 2D world] --> B[16-beam simulated LiDAR]
-    A --> C[Goal-relative features]
-    B --> D[19D observation]
-    C --> D
-    D --> E[Fixed-lag frame history: 57D]
-    E --> F[PPO actor–critic MLP]
-    F --> G[Continuous v and angular rate]
-    G --> A
+    A[2D procedural world] --> B[16 LiDAR ranges + goal features]
+    B --> C[19D observation]
+    C --> D[Optional 57D fixed-lag history]
+    D --> E[PPO policy network]
+    E --> F[Signed linear and angular actions]
+    F --> A
 ```
 
-The policy never receives a ground-truth obstacle map: obstacle positions are used by the simulator to synthesize measurements and detect collisions. Three fixed-delay observations help provide motion context without a recurrent network. Reward shaping additionally penalizes **positive closing speed toward nearby obstacles**. The hypothesis that this term improves safety requires the explicit no-risk ablation; the bundled model alone does not prove causality.
+The robot is approximated as a disk with ideal planar kinematics; obstacles are static circles. The environment has no walls, moving obstacles, 3D sensing, actuator delay, odometry drift, localization error or collision-prevention system. It is **not a validated real-robot controller**. The original reward uses post-update heading for its collision-risk component; this convention and unnormalized observations are preserved for checkpoint compatibility.
 
-## Scientific context and limitations
+The checkpoint stores 190,464 cumulative steps, but not the complete staged-training history or original TensorBoard logs. New scratch experiments are not claimed to reproduce that historical path.
 
-The mapless continuous-control problem relates to [Tai, Paolo & Liu (IROS 2017)](https://doi.org/10.1109/IROS.2017.8202134); the baseline follows the artificial potential-field idea of [Khatib (IJRR 1986)](https://doi.org/10.1177/027836498600500106). The policy uses [PPO (Schulman et al., 2017)](https://arxiv.org/abs/1707.06347). It is **not** a replication of those papers.
+**Documentation:** [Technical brief](docs/PROJECT_BRIEF.md) · [Experiments](docs/EXPERIMENTS.md) · [Model card](docs/MODEL_CARD.md) · [Baseline methodology](docs/BASELINES_AND_ROBUSTNESS.md) · [Ablations](docs/ABLATIONS.md) · [Data provenance](docs/DATA_PROVENANCE.md) · [Changelog](CHANGELOG.md).
 
-**Known constraints:** all maps are generated procedurally; the default generator anchors one disk near the start-goal midpoint and places others relative to that axis. Default train and test scenes are drawn from the same family. No wall, dynamic obstacle, 3D perception, odometry uncertainty, sim-to-real transfer or physical safety controller has been tested. Metric observations are unnormalized for compatibility with the trained checkpoint. Changes to sensor ordering or reward timing require separate revalidation. See [model card](docs/MODEL_CARD.md).
+**Related research:** [Khatib (1986)](https://doi.org/10.1177/027836498600500106) · [Tai et al. (2017)](https://doi.org/10.1109/IROS.2017.8202134) · [Schulman et al. (2017)](https://arxiv.org/abs/1707.06347).
 
-The source and trained checkpoint are available under the [MIT license](LICENSE).
-
-## Repository structure
-
-```text
-mapless-ppo-navigation/
-├── run.py                     # View / evaluate / benchmark / train CLI
-├── models/
-│   └── navigation_ppo.zip     # Bundled PPO model (Stable-Baselines3 format)
-├── src/mapless_ppo/
-│   ├── navigation.py          # Robot motion, range simulation, reward
-│   ├── environment.py         # Gymnasium API and seeded scenes
-│   ├── frame_stack.py         # 57D fixed-lag observation history
-│   ├── scenarios.py           # Obstacle counts and radius randomization
-│   ├── experiments.py         # Training, evaluation and export
-│   ├── visualization.py       # Interactive trajectory inspector
-│   ├── baselines.py           # Potential-field controller
-│   ├── benchmark.py           # Paired evaluation and uncertainty
-│   ├── stress.py              # Noise and scenario distribution shifts
-│   └── cli.py                 # Argument parsing
-├── tests/                     # Environment, geometry and CLI tests
-├── results/                   # Measured comparison summaries and historical metrics
-├── docs/                      # Technical note, experiments, model details
-└── assets/                    # Benchmark figures
-```
-
-## Reproducibility and limitations
-
-The checkpoint was saved with Stable-Baselines3 2.9.2 and Gymnasium 1.4.0. See the [model card](docs/MODEL_CARD.md) for its hash, architecture, version metadata and verification status. The local paired-seed run is reported from the author-provided console output, without individual episode artifacts. Evaluation defaults to **500 episodes per configuration with seeds 60000–60499**.
-
-This is an **idealized 2D kinematic environment**: circular robot/obstacle geometry, static obstacles, noiseless range sensing, no localization drift, no actuator dynamics, no mapping and no safety-critical controller. The fixed-lag observation buffer does not solve long-horizon partial observability. Physical-robot control and ROS 2 integration are **outside this repository's implemented scope**.
-
-For methodology, trade-offs and reward details, see the [technical brief](docs/PROJECT_BRIEF.md), [experiment log](docs/EXPERIMENTS.md), and [benchmark interpretation](docs/BASELINES_AND_ROBUSTNESS.md).
-
----
-
-**Stack:** Python · PyTorch · Stable-Baselines3 · Gymnasium · NumPy · Pygame  
-**Author:** Luca Tascone
+**Stack:** Python · PyTorch · Stable-Baselines3 · Gymnasium · NumPy · Pygame. **License:** [MIT](LICENSE).
