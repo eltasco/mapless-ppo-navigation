@@ -1,4 +1,7 @@
-"""Gymnasium API, seeded sampling and frame-history checks."""
+"""Gymnasium API, seeded sampling and frame-history checks.
+
+Checks cover Gymnasium observations, reproducible seeded scenarios, variable obstacle counts, and compatibility with the SB3 environment checker.
+"""
 
 import numpy as np
 import pytest
