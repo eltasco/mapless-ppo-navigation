@@ -1,3 +1,5 @@
+"""Regression tests for CLI parsing, option validation and checkpoint aliases."""
+
 import pytest
 
 pytest.importorskip("gymnasium")
