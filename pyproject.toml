@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mapless-ppo-navigation"
 version = "1.0.0"
-description = "Mapless goal-directed navigation with PPO, simulated LiDAR and risk-aware reward shaping"
+description = "Mapless goal-directed navigation with PPO, 360-degree simulated LiDAR and risk-aware reward shaping"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{name = "Luca Tascone"}]
