@@ -2,6 +2,7 @@
 
 Examples:
     python run.py view best hard 5
+    python run.py --help
     python run.py eval best hard 2-5 --episodes 500
     python run.py train scratch mixed 2-5 200000 models/new_ppo --lr 0.0003
 """
