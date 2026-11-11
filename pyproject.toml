@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mapless-ppo-navigation"
+version = "1.0.0"
+description = "Mapless goal-directed navigation with PPO, simulated LiDAR and risk-aware reward shaping"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Luca Tascone"}]
+dependencies = [
+    "numpy>=2.0,<3",
+    "gymnasium>=1.4,<2",
+    "stable-baselines3>=2.9.2,<3",
+    "pygame>=2.5,<3",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10"]
+
+[project.scripts]
+mapless-ppo = "mapless_ppo.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

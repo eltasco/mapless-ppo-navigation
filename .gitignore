@@ -1,0 +1,30 @@
+# Python / environment
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Generated experiments / user-specific artifacts
+logs/
+models/checkpoints/
+models/variable_checkpoints/
+models/*.zip
+!models/navigation_ppo.zip
+models/*.json
+results/*.csv
+!results/recorded_benchmarks.csv
+results/*.json
+results/screenshots/
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
