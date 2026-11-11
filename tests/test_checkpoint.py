@@ -1,4 +1,7 @@
-"""Integrity checks for the reference artifact, independent of optional RL packages."""
+"""Integrity checks for the reference artifact, independent of optional RL packages.
+
+The tests pin the published artifact by SHA-256, verify the archive structure, and check the serialized PPO network configuration.
+"""
 import hashlib
 import json
 from pathlib import Path
