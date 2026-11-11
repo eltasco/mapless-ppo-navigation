@@ -2,6 +2,8 @@
 
 Sampling order is deliberately retained at the default obstacle radius (0.35m)
 to make the original evaluation seeds meaningful for saved models.
+
+Each observation combines goal distance, goal bearing encoded as sine/cosine, and 16 local range measurements. Reset seeds govern reproducible obstacle layouts.
 """
 
 from __future__ import annotations
