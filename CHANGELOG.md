@@ -1,13 +1,16 @@
 # Changelog
 
-## 1.2.0 — 2026-11-11
+## 1.3.0 — Benchmark methodology and evaluation tooling
 
-- Documented the author's locally executed 2,000-scenario PPO-versus-potential-field benchmark (500 episodes for each of four obstacle counts, two controllers on paired seed ranges).
-- Added the aggregate benchmark CSV/JSON, supplied console transcript and comparison figure. The original per-episode output was not provided and is not reconstructed.
-- Added potential-field navigation, paired benchmarking, Wilson 95% intervals, and optional scenario/LiDAR stress tests and timeout tracing in the experimental toolkit.
-- Added controlled ablation/training protocols, checkpoint integrity tests, and CI smoke coverage. No training ablation or out-of-distribution result is claimed without a measured run.
+- Preserved the original untuned potential-field controller as `potential_legacy`, distinct from a configurable revised field with bounded repulsion, tangential steering and reverse motion.
+- Added explicit validation-only parameter selection on seed ranges disjoint from published tests. **No calibrated-baseline performance is claimed without a measured run.**
+- Centralized episode rollout metrics; `eval` and `benchmark` support 19D and 57D policies, alternative scene layouts, LiDAR noise/dropout and optional fixed scaling for new trained models.
+- Expanded validation across obstacle counts and fixed seeds, added a three-seed ablation runner, timeout summarizer and episode-level result checker.
+- Reframed the old weak-field comparison as exploratory, organized data provenance and strengthened baseline behavior and preprocessing tests.
+- Preserved the shipped PPO checkpoint and its SHA-256, with no changes to the original policy's learned weights.
 
-## 1.0.0 — 2026-11-11
+## 1.2.0 — Initial public repository packaging
 
-- Packaged the Gymnasium navigation environment, procedural scenes, PPO utilities, 57D fixed-lag observations and Pygame viewer as an independently runnable research project.
-- Included the original `navigation_ppo.zip` checkpoint with SHA-256 verification and the project methodology documentation.
+- Packaged the reference PPO checkpoint, 2D simulator, baseline, evaluation tools, Pygame viewer and technical notes.
+- The public repository was assembled in a concentrated documentation/refactoring session. Same-day commits are **not** a reconstruction of the earlier development chronology; the original staged training happened before the public history.
+- A few generated smoke-test output files were briefly committed while preparing the repository, then removed. They were **not used as published benchmark evidence**. The Git history has not been rewritten.
