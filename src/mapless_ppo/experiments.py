@@ -1,4 +1,7 @@
-"""PPO training, checkpointing, deterministic evaluation, and machine-readable results."""
+"""PPO training, checkpointing, deterministic evaluation, and machine-readable results.
+
+Evaluations use fixed seeds and record success, collision, and timeout statistics. Training can resume from a checkpoint without overwriting the shipped policy.
+"""
 
 from __future__ import annotations
 
