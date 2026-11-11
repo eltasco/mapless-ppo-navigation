@@ -37,3 +37,12 @@ def test_parsers():
 def test_default_checkpoint_alias():
     from mapless_ppo.experiments import actual_zip, model_path
     assert actual_zip(model_path("best")).as_posix() == "models/navigation_ppo.zip"
+
+
+def test_benchmark_and_ablation_options():
+    parser = build_parser()
+    bench = parser.parse_args(["benchmark", "--controllers", "both", "--layout", "uniform", "--lidar-noise", "0.05"])
+    assert bench.layout == "uniform"
+    assert bench.lidar_noise == pytest.approx(0.05)
+    train = parser.parse_args(["train", "scratch", "hard", "2-5", "10000", "models/new", "--history", "single", "--risk-weight", "0", "--eval-every", "1000"])
+    assert train.history == "single" and train.risk_weight == 0 and train.eval_every == 1000

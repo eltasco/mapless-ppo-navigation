@@ -1,7 +1,4 @@
-"""PPO training, checkpointing, deterministic evaluation, and machine-readable results.
-
-Evaluations use fixed seeds and record success, collision, and timeout statistics. Training can resume from a checkpoint without overwriting the shipped policy.
-"""
+"""PPO training, checkpointing, deterministic evaluation, and machine-readable results."""
 
 from __future__ import annotations
 
@@ -13,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback, EvalCallback
 from stable_baselines3.common.monitor import Monitor
 
 from .environment import GymNavigationEnv, STAGES
@@ -79,8 +76,14 @@ def parse_stages(spec: str) -> list[str]:
     return [spec]
 
 
-def environment(count: int, stage: str) -> FrameStackWrapper:
-    return FrameStackWrapper(GymNavigationEnv(count, stage))
+def environment(count: int, stage: str, *, history: str = "stack", risk_weight: float = 1.5):
+    """Create a Gymnasium environment; default matches the shipped 57-D policy."""
+    base = GymNavigationEnv(count, stage, risk_weight=risk_weight)
+    if history == "stack":
+        return FrameStackWrapper(base)
+    if history == "single":
+        return base
+    raise ValueError("history must be 'stack' or 'single'")
 
 
 def _check_spaces(model: PPO, env) -> None:
@@ -118,6 +121,7 @@ def evaluate(
     progress_every: int = 50,
     episode_csv: str | None = None,
     summary_json: str | None = None,
+    history: str = "stack",
 ) -> list[EvaluationSummary]:
     if episodes < 1 or progress_every < 1:
         raise ValueError("Episodes and progress interval must be positive")
@@ -130,7 +134,7 @@ def evaluate(
 
     for stage in stages:
         for count in counts:
-            env = environment(count, stage)
+            env = environment(count, stage, history=history)
             _check_spaces(model, env)
             outcomes = {"success": 0, "collision": 0, "timeout": 0}
             total_reward = 0.0
@@ -226,7 +230,13 @@ def train(
     learning_rate: float | None = None,
     checkpoint_every: int = 5_000,
     seed: int = 42,
+    history: str = "stack",
+    risk_weight: float = 1.5,
+    eval_every: int = 0,
+    tensorboard_log: str | None = None,
 ) -> str:
+    if history not in {"stack", "single"} or not math.isfinite(risk_weight) or risk_weight < 0 or eval_every < 0:
+        raise ValueError("Invalid training history, risk weight, or eval frequency")
     if timesteps < 1 or checkpoint_every < 1:
         raise ValueError("Timesteps and checkpoint frequency must be positive")
     counts = parse_counts(counts_spec)
@@ -243,7 +253,7 @@ def train(
     # The ordering matters: count chosen prior to FrameStackWrapper.reset().
     env = Monitor(
         VariableObstacleCount(
-            environment(counts[0], stage), counts[0], counts[-1]
+            environment(counts[0], stage, history=history, risk_weight=risk_weight), counts[0], counts[-1]
         ),
         info_keywords=("num_obstacles",),
     )
@@ -255,7 +265,7 @@ def train(
                 batch_size=64, n_epochs=10, gamma=0.995,
                 gae_lambda=0.95, clip_range=0.2,
                 policy_kwargs=dict(net_arch=dict(pi=[64, 64], vf=[64, 64])),
-                seed=seed, device="cpu", verbose=1,
+                seed=seed, device="cpu", verbose=1, tensorboard_log=tensorboard_log,
             )
             start_label = "scratch"
         else:
@@ -266,26 +276,43 @@ def train(
             # SB3.load accepts an overridden learning rate while retaining
             # the learned weights; no reinitialization of the policy is done.
             kwargs = {"learning_rate": learning_rate} if learning_rate is not None else {}
+            if tensorboard_log is not None:
+                kwargs["tensorboard_log"] = tensorboard_log
             model = PPO.load(str(start_path), env=env, device="cpu", **kwargs)
             start_label = str(start_path)
         _check_spaces(model, env)
         out.parent.mkdir(parents=True, exist_ok=True)
         checkpoint_dir = Path("models/checkpoints") / out.stem
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        callback = CheckpointCallback(
+        callbacks = [CheckpointCallback(
             save_freq=checkpoint_every,
             save_path=str(checkpoint_dir),
             name_prefix="ppo_navigation",
-        )
+        )]
+        eval_env = None
+        if eval_every > 0:
+            # Validation is kept separate from held-out seed ranges used below.
+            eval_env = Monitor(environment(counts[-1], stage, history=history, risk_weight=risk_weight))
+            eval_env.reset(seed=seed + 10_000)
+            callbacks.append(EvalCallback(
+                eval_env, best_model_save_path=str(checkpoint_dir / "validation_best"),
+                log_path=str(checkpoint_dir / "validation"),
+                eval_freq=eval_every, n_eval_episodes=10,
+                deterministic=True, verbose=1,
+            ))
         print(
             f"Training from {start_label} | stage={stage} | obstacles={counts_spec} "
             f"| steps={timesteps} | lr={model.learning_rate:g}"
         )
-        model.learn(
-            total_timesteps=timesteps,
-            reset_num_timesteps=start_label == "scratch",
-            callback=callback,
-        )
+        try:
+            model.learn(
+                total_timesteps=timesteps,
+                reset_num_timesteps=start_label == "scratch",
+                callback=CallbackList(callbacks),
+            )
+        finally:
+            if eval_env is not None:
+                eval_env.close()
         model.save(str(out))
         metadata = {
             "created_utc": datetime.now(timezone.utc).isoformat(),
@@ -295,6 +322,8 @@ def train(
             "actual_cumulative_timesteps": int(model.num_timesteps),
             "learning_rate": float(model.learning_rate),
             "seed": seed, "observations": list(env.observation_space.shape),
+            "history": history, "risk_weight": risk_weight,
+            "eval_every": eval_every, "tensorboard_log": tensorboard_log,
             "note": "On-policy PPO may process a full final rollout beyond requested timesteps.",
         }
         out.with_suffix(".json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")

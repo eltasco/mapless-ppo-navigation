@@ -2,9 +2,8 @@
 
 This module intentionally preserves the original simulator's state transition,
 observation ordering, and reward computation for compatibility with saved PPO
-policies. It is not a dynamics simulator for a physical quadruped.
-
-A signed forward velocity and yaw rate drive the planar agent. Circular range intersections, collision clearances, and goal-directed reward terms are evaluated in simulator coordinates.
+policies. It models only planar unicycle-like motion; it has no 3D dynamics, walls,
+slip, actuator delay, or locomotion controller.
 """
 
 from __future__ import annotations
@@ -20,7 +19,10 @@ class NavigationEnv:
     geometry is a disk approximation. Coordinates and distances are in meters.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, risk_weight: float = 1.5) -> None:
+        if not math.isfinite(risk_weight) or risk_weight < 0:
+            raise ValueError("risk_weight must be nonnegative and finite")
+        self.risk_weight = risk_weight
         self.dt = 1.0 / 30.0
         self.max_steps = 900
         self.max_linear_speed = 0.6
@@ -160,7 +162,7 @@ class NavigationEnv:
             approach_speed = max(0.0, closing_speed)
             danger = near_obstacle * (approach_speed / self.max_linear_speed) ** 2
             maximum_danger = max(maximum_danger, danger)
-        reward -= 1.5 * maximum_danger * self.dt
+        reward -= self.risk_weight * maximum_danger * self.dt
 
         if collision:
             reward -= 10.0

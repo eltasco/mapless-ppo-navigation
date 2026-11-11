@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mapless-ppo-navigation"
 version = "1.0.0"
-description = "Mapless goal-directed navigation with PPO, 360-degree simulated LiDAR and risk-aware reward shaping"
+description = "Mapless goal-directed navigation with PPO, simulated LiDAR and risk-aware reward shaping"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{name = "Luca Tascone"}]
@@ -18,6 +18,8 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest>=8,<10"]
+logging = ["tensorboard>=2.15,<3"]
+analysis = ["matplotlib>=3.8,<4"]
 
 [project.scripts]
 mapless-ppo = "mapless_ppo.cli:main"

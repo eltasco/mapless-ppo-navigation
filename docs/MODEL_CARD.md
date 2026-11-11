@@ -38,6 +38,7 @@ Earlier local evaluations reported success rates from 87.4% to 94.2% on hard 2â€
 
 The model is **not validated for use on real robots**. The simulator assumes perfect, sparse 2D range sensing and simplified kinematics. It has no obstacle motion, mapping, uncertainty estimation or external collision-prevention system. Use as a research/portfolio artifact rather than safety-critical autonomy software.
 
-## Checkpoint verification
 
-Run `python -m pytest tests/test_checkpoint.py` to check that the released archive is intact and matches the documented SHA-256 and model configuration. The checkpoint is an SB3 archive, not a standalone PyTorch state dict.
+## Evidence limitations
+
+The 190,464 cumulative timesteps and learning rate 0.0001 are checkpoint metadata, not a sufficient recipe for reproducing the full multi-stage curriculum. The original model is trained on unnormalized sensor distances and a risk reward calculated with post-update heading; these implementation conventions are preserved for compatibility. A non-risk model or 19-D policy must be separately trained. No hardware collision guarantee is implied.

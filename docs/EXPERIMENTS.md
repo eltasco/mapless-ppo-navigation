@@ -31,6 +31,11 @@ The default obstacle radius is 0.35 m. All obstacle counts are evaluated over th
 
 To compare another checkpoint, use the exact same command and seeds with the path to that `.zip` file. Keep a record of the checkpoint SHA-256, simulator revision, versions, and the full CSV of episode outcomes. Do not infer hardware-level collision performance from simulator-only metrics.
 
-## Reproducing the evaluation protocol
 
-Run `python run.py eval best hard 2-5 --episodes 500` from the repository root to evaluate the bundled checkpoint across the hard obstacle-count settings. The newly generated measurements should be reported separately from the historical reference table until seed ranges and environment revision are confirmed to match.
+## Additional experimental tools (not historical results)
+
+- [Classical baseline, distribution shifts, Wilson confidence intervals and timeout traces](BASELINES_AND_ROBUSTNESS.md)
+- [Multi-seed ablation protocol with frame-history and risk-weight controls](ABLATIONS.md)
+- [`scripts/staged_training_example.sh`](../scripts/staged_training_example.sh) illustrates the curriculum structure but is not guaranteed to reproduce the released policy.
+
+The published checkpoint records 190,464 cumulative PPO timesteps. The full training sequence cannot be recovered from it; original intermediate checkpoints and TensorBoard logs were not supplied. A documented reconstruction is not proof of identical training.

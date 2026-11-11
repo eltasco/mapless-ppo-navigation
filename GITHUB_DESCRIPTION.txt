@@ -1,1 +1,0 @@
-Mapless PPO navigation with simulated 360-degree LiDAR, observation history, risk-aware control, and reproducible benchmarks.

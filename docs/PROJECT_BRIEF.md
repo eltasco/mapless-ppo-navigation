@@ -48,6 +48,7 @@ Evaluation uses `model.predict(..., deterministic=True)` and records success, co
 
 For checkpoint provenance and precise reproducibility caveats, see [MODEL_CARD.md](MODEL_CARD.md) and [EXPERIMENTS.md](EXPERIMENTS.md).
 
-## Implementation map
 
-The core kinematic and range-sensing logic is in [`navigation.py`](../src/mapless_ppo/navigation.py); the Gymnasium interface and procedural scenes are in [`environment.py`](../src/mapless_ppo/environment.py). The temporal observation adapter is implemented in [`frame_stack.py`](../src/mapless_ppo/frame_stack.py), while [`experiments.py`](../src/mapless_ppo/experiments.py) provides policy loading, training and evaluation.
+## Comparative controls and failure analysis
+
+The repository now provides an artificial potential-field baseline on paired deterministic scenes, as well as non-midpoint obstacle layouts, longer goals, and measurement noise/dropout. These are *experiment harnesses*, not evidence of better performance until run and recorded. See [Baselines and robustness](BASELINES_AND_ROBUSTNESS.md) and [Ablation protocol](ABLATIONS.md).

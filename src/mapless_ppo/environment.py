@@ -2,8 +2,6 @@
 
 Sampling order is deliberately retained at the default obstacle radius (0.35m)
 to make the original evaluation seeds meaningful for saved models.
-
-Each observation combines goal distance, goal bearing encoded as sine/cosine, and 16 local range measurements. Reset seeds govern reproducible obstacle layouts.
 """
 
 from __future__ import annotations
@@ -22,7 +20,7 @@ STAGES = ("easy", "medium", "medium_hard", "hard", "hard_passable", "mixed")
 class GymNavigationEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, num_obstacles: int = 1, curriculum_stage: str = "hard"):
+    def __init__(self, num_obstacles: int = 1, curriculum_stage: str = "hard", *, risk_weight: float = 1.5):
         super().__init__()
         if curriculum_stage not in STAGES:
             raise ValueError(f"Unknown difficulty: {curriculum_stage!r}")
@@ -30,7 +28,7 @@ class GymNavigationEnv(gym.Env):
             raise ValueError("num_obstacles must be a positive integer")
         self.num_obstacles = num_obstacles
         self.curriculum_stage = curriculum_stage
-        self.robot = NavigationEnv()
+        self.robot = NavigationEnv(risk_weight=risk_weight)
         self.action_space = spaces.Box(-1.0, 1.0, shape=(2,), dtype=np.float32)
         count = len(self.robot.sensor_angles)
         self.observation_space = spaces.Box(
