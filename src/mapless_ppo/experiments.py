@@ -10,12 +10,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback, EvalCallback
+from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 
 from .environment import GymNavigationEnv, STAGES
 from .scenarios import VariableObstacleCount, parse_radius, set_episode_radius
 from .frame_stack import FrameStackWrapper
+from .observation import FixedObservationScale
+from .rollouts import run_episode
 
 REFERENCE_MODEL = "models/navigation_ppo.zip"
 
@@ -43,6 +45,28 @@ def require_checkpoint(path: str | Path) -> None:
             f"Missing model: {actual_zip(path)}. "
             "Provide a Stable-Baselines3 PPO checkpoint (.zip) or train a new policy."
         )
+
+
+def check_checkpoint_observations(model_file: str | Path, history: str, observation_scale: str):
+    """Reject known incompatible preprocessing even if feature shape matches.
+
+    We have explicit provenance for the published policy (raw 57D) and for
+    newly created policies with JSON sidecars. Older third-party checkpoints
+    without sidecars are allowed with unscaled observations only.
+    """
+    path = actual_zip(model_file)
+    shipped = actual_zip(REFERENCE_MODEL)
+    if path.resolve() == shipped.resolve():
+        if (history, observation_scale) != ("stack", "none"):
+            raise ValueError("The released model requires --history stack and --observation-scale none")
+        return
+    metadata = path.with_suffix(".json")
+    if metadata.exists():
+        info = json.loads(metadata.read_text(encoding="utf-8"))
+        if info.get("history", "stack") != history or info.get("observation_scale", "none") != observation_scale:
+            raise ValueError("Checkpoint's saved preprocessing differs from requested options")
+    elif observation_scale != "none":
+        raise ValueError("Fixed scaling requires a checkpoint with a JSON preprocessing sidecar")
 
 
 def parse_counts(spec: str) -> list[int]:
@@ -76,9 +100,18 @@ def parse_stages(spec: str) -> list[str]:
     return [spec]
 
 
-def environment(count: int, stage: str, *, history: str = "stack", risk_weight: float = 1.5):
-    """Create a Gymnasium environment; default matches the shipped 57-D policy."""
+def environment(count: int, stage: str, *, history: str = "stack",
+                risk_weight: float = 1.5, observation_scale: str = "none"):
+    """Build an env matching the chosen observation contract.
+
+    Default `none` preserves the bundled 57-D checkpoint unchanged. Fixed
+    scaling is opt-in and requires separately trained weights.
+    """
     base = GymNavigationEnv(count, stage, risk_weight=risk_weight)
+    if observation_scale == "fixed":
+        base = FixedObservationScale(base)
+    elif observation_scale != "none":
+        raise ValueError("observation_scale must be 'none' or 'fixed'")
     if history == "stack":
         return FrameStackWrapper(base)
     if history == "single":
@@ -115,108 +148,85 @@ def evaluate(
     stages: list[str],
     counts: list[int],
     *,
-    radius_spec: str = "original",
-    episodes: int = 500,
-    seed_start: int = 60_000,
-    progress_every: int = 50,
-    episode_csv: str | None = None,
-    summary_json: str | None = None,
-    history: str = "stack",
+    radius_spec: str = "original", episodes: int = 500,
+    seed_start: int = 60_000, progress_every: int = 50,
+    episode_csv: str | None = None, summary_json: str | None = None,
+    history: str = "stack", observation_scale: str = "none",
+    layout: str = "original", noise_std: float = 0.0, dropout: float = 0.0,
 ) -> list[EvaluationSummary]:
-    if episodes < 1 or progress_every < 1:
-        raise ValueError("Episodes and progress interval must be positive")
+    """Evaluate one checkpoint using the exact shared rollout implementation.
+
+    Supports 19-D/57-D policies and the same OOD settings as benchmark.
+    """
+    from .benchmark import make_benchmark_env
+    from .stress import StressWorld
+    if episodes < 1 or progress_every < 1 or seed_start < 0:
+        raise ValueError("Invalid evaluation arguments")
+    if layout not in StressWorld.VALID_LAYOUTS:
+        raise ValueError("Invalid layout")
+    if noise_std < 0 or not math.isfinite(noise_std) or not 0 <= dropout <= 1:
+        raise ValueError("Invalid LiDAR noise or dropout")
     model_file = model_path(checkpoint)
     require_checkpoint(model_file)
+    check_checkpoint_observations(model_file, history, observation_scale)
     model = PPO.load(str(model_file), device="cpu")
     radius = parse_radius(radius_spec)
     summaries: list[EvaluationSummary] = []
     episode_rows = []
-
     for stage in stages:
         for count in counts:
-            env = environment(count, stage, history=history)
+            env = make_benchmark_env(count, stage, layout, noise_std, dropout,
+                                     history, observation_scale)
             _check_spaces(model, env)
             outcomes = {"success": 0, "collision": 0, "timeout": 0}
-            total_reward = 0.0
-            total_steps = 0
+            total_reward = total_steps = 0
             try:
-                for ep in range(episodes):
-                    seed = seed_start + ep
-                    episode_radius = set_episode_radius(env, radius, seed)
-                    obs, _ = env.reset(seed=seed)
-                    if not math.isclose(env.robot.obstacle_radius, episode_radius, abs_tol=1e-9):
-                        raise RuntimeError("Environment unexpectedly changed obstacle radius during reset")
-                    if len(env.robot.obstacles) != count:
-                        raise RuntimeError("Obstacle count mismatch")
-                    if not env.observation_space.contains(obs):
-                        raise RuntimeError("Invalid initial observation")
-                    episode_reward = 0.0
-                    done = False
-                    while not done:
-                        action, _ = model.predict(obs, deterministic=True)
-                        obs, reward, terminated, truncated, info = env.step(action)
-                        episode_reward += float(reward)
-                        done = bool(terminated or truncated)
-                    outcome = (
-                        "success" if info.get("goal_reached", False)
-                        else "collision" if info.get("collision", False)
-                        else "timeout"
-                    )
-                    outcomes[outcome] += 1
-                    total_reward += episode_reward
-                    total_steps += env.robot.steps
+                for i in range(episodes):
+                    seed = seed_start + i
+                    metrics, _ = run_episode(env, model, seed, radius)
+                    outcomes[metrics.outcome] += 1
+                    total_reward += metrics.reward
+                    total_steps += metrics.steps
                     episode_rows.append({
                         "model": str(model_file), "stage": stage, "obstacles": count,
-                        "seed": seed, "radius_m": round(episode_radius, 6),
-                        "outcome": outcome, "steps": env.robot.steps,
-                        "reward": round(episode_reward, 6),
+                        "seed": seed, "layout": layout, "history": history,
+                        "observation_scale": observation_scale,
+                        "noise_std_m": noise_std, "dropout": dropout,
+                        "radius_m": round(metrics.radius_m, 6),
+                        "outcome": metrics.outcome, "steps": metrics.steps,
+                        "reward": round(metrics.reward, 6),
+                        "low_speed_fraction": round(metrics.low_speed_fraction, 6),
+                        "velocity_sign_flips": metrics.velocity_sign_flips,
                     })
-                    if (ep + 1) % progress_every == 0 or ep + 1 == episodes:
-                        print(
-                            f"[{count} obstacles / {stage}] {ep + 1}/{episodes} "
-                            f"| success {outcomes['success'] / (ep + 1):.1%}",
-                            flush=True,
-                        )
+                    if (i + 1) % progress_every == 0 or i + 1 == episodes:
+                        print(f"[{count} obstacles / {stage} / {layout}] "
+                              f"{i+1}/{episodes} | success {outcomes['success']/(i+1):.1%}",
+                              flush=True)
             finally:
                 env.close()
             summary = EvaluationSummary(
                 model=str(model_file), stage=stage, obstacles=count, radius=radius_spec,
                 episodes=episodes, seed_start=seed_start,
                 success=outcomes["success"], collision=outcomes["collision"],
-                timeout=outcomes["timeout"],
-                success_rate=100.0 * outcomes["success"] / episodes,
-                mean_reward=total_reward / episodes,
-                mean_steps=total_steps / episodes,
+                timeout=outcomes["timeout"], success_rate=100*outcomes["success"]/episodes,
+                mean_reward=total_reward/episodes, mean_steps=total_steps/episodes,
             )
             summaries.append(summary)
-            print(
-                f"\n{count} OBSTACLES / {stage.upper()} | {summary.success_rate:.1f}% "
-                f"({summary.success}/{episodes}) | collisions={summary.collision} "
-                f"| timeouts={summary.timeout} | mean reward={summary.mean_reward:.2f}\n"
-            )
-
-    if episode_csv:
-        p = Path(episode_csv)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with p.open("w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=list(episode_rows[0]))
-            writer.writeheader()
-            writer.writerows(episode_rows)
-        print(f"Episode results: {p}")
+            print(f"{count} obstacles / {stage} / {layout}: success={summary.success_rate:.1f}%, "
+                  f"collisions={summary.collision}, timeouts={summary.timeout}")
+    if episode_csv and episode_rows:
+        from .benchmark import write_csv
+        write_csv(episode_csv, episode_rows)
     if summary_json:
         p = Path(summary_json)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(
-            json.dumps({
-                "generated_utc": datetime.now(timezone.utc).isoformat(),
-                "evaluation": [asdict(s) for s in summaries],
-            }, indent=2) + "\n", encoding="utf-8"
-        )
-        print(f"Summary: {p}")
-
-    print("SUMMARY")
-    for s in summaries:
-        print(f"  {s.stage:12s} | {s.obstacles} obstacles | {s.success_rate:5.1f}%")
+        p.write_text(json.dumps({
+            "generated_utc": datetime.now(timezone.utc).isoformat(),
+            "status": "newly_measured", "layout": layout, "noise_std_m": noise_std,
+            "dropout_probability": dropout, "history": history,
+            "observation_scale": observation_scale,
+            "evaluation": [asdict(s) for s in summaries],
+        }, indent=2) + "\n", encoding="utf-8")
     return summaries
 
 
@@ -234,9 +244,14 @@ def train(
     risk_weight: float = 1.5,
     eval_every: int = 0,
     tensorboard_log: str | None = None,
+    validation_episodes: int = 50, validation_seed_start: int = 20_000,
+    observation_scale: str = "none",
 ) -> str:
-    if history not in {"stack", "single"} or not math.isfinite(risk_weight) or risk_weight < 0 or eval_every < 0:
+    if (history not in {"stack", "single"} or observation_scale not in {"none", "fixed"}
+        or not math.isfinite(risk_weight) or risk_weight < 0 or eval_every < 0):
         raise ValueError("Invalid training history, risk weight, or eval frequency")
+    if validation_episodes < 1 or validation_seed_start < 0:
+        raise ValueError("Invalid validation episode count or seed")
     if timesteps < 1 or checkpoint_every < 1:
         raise ValueError("Timesteps and checkpoint frequency must be positive")
     counts = parse_counts(counts_spec)
@@ -253,7 +268,8 @@ def train(
     # The ordering matters: count chosen prior to FrameStackWrapper.reset().
     env = Monitor(
         VariableObstacleCount(
-            environment(counts[0], stage, history=history, risk_weight=risk_weight), counts[0], counts[-1]
+            environment(counts[0], stage, history=history, risk_weight=risk_weight,
+                        observation_scale=observation_scale), counts[0], counts[-1]
         ),
         info_keywords=("num_obstacles",),
     )
@@ -271,6 +287,7 @@ def train(
         else:
             start_path = model_path(start)
             require_checkpoint(start_path)
+            check_checkpoint_observations(start_path, history, observation_scale)
             if actual_zip(start_path).resolve() == out.resolve():
                 raise ValueError("Input and output checkpoint paths must differ")
             # SB3.load accepts an overridden learning rate while retaining
@@ -289,30 +306,25 @@ def train(
             save_path=str(checkpoint_dir),
             name_prefix="ppo_navigation",
         )]
-        eval_env = None
         if eval_every > 0:
-            # Validation is kept separate from held-out seed ranges used below.
-            eval_env = Monitor(environment(counts[-1], stage, history=history, risk_weight=risk_weight))
-            eval_env.reset(seed=seed + 10_000)
-            callbacks.append(EvalCallback(
-                eval_env, best_model_save_path=str(checkpoint_dir / "validation_best"),
-                log_path=str(checkpoint_dir / "validation"),
-                eval_freq=eval_every, n_eval_episodes=10,
-                deterministic=True, verbose=1,
+            from .validation import SeededValidationCallback
+            callbacks.append(SeededValidationCallback(
+                make_env=lambda n: environment(n, stage, history=history,
+                                                risk_weight=risk_weight,
+                                                observation_scale=observation_scale),
+                counts=counts, eval_freq=eval_every,
+                episodes=validation_episodes, seed_start=validation_seed_start,
+                destination=str(checkpoint_dir / "validation"),
             ))
         print(
             f"Training from {start_label} | stage={stage} | obstacles={counts_spec} "
             f"| steps={timesteps} | lr={model.learning_rate:g}"
         )
-        try:
-            model.learn(
-                total_timesteps=timesteps,
-                reset_num_timesteps=start_label == "scratch",
-                callback=CallbackList(callbacks),
-            )
-        finally:
-            if eval_env is not None:
-                eval_env.close()
+        model.learn(
+            total_timesteps=timesteps,
+            reset_num_timesteps=start_label == "scratch",
+            callback=CallbackList(callbacks),
+        )
         model.save(str(out))
         metadata = {
             "created_utc": datetime.now(timezone.utc).isoformat(),
@@ -323,6 +335,9 @@ def train(
             "learning_rate": float(model.learning_rate),
             "seed": seed, "observations": list(env.observation_space.shape),
             "history": history, "risk_weight": risk_weight,
+            "observation_scale": observation_scale,
+            "validation_episodes_per_count": validation_episodes,
+            "validation_seed_start": validation_seed_start,
             "eval_every": eval_every, "tensorboard_log": tensorboard_log,
             "note": "On-policy PPO may process a full final rollout beyond requested timesteps.",
         }

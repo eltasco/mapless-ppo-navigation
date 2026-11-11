@@ -1,9 +1,10 @@
 # Technical documentation
 
-- **[Project brief](PROJECT_BRIEF.md)** — simulator and PPO design.
-- **[Experiments](EXPERIMENTS.md)** — historical metrics and evaluation protocol.
-- **[Model card](MODEL_CARD.md)** — released checkpoint and limitations.
-- **[Baselines and robustness](BASELINES_AND_ROBUSTNESS.md)** — classical controller, paired testing, stress distributions and failure traces.
-- **[Ablations](ABLATIONS.md)** — experimental plans for history and reward contributions.
+- [Technical brief](PROJECT_BRIEF.md): simulator assumptions, reward and policy design.
+- [Experiments](EXPERIMENTS.md): reference checkpoint and evaluated scene conditions.
+- [Classical baseline and robustness](BASELINES_AND_ROBUSTNESS.md): historical vs. tunable controller, validation split and stress tests.
+- [Ablation protocol](ABLATIONS.md): nine independent training jobs and fixed-seed validation.
+- [Model card](MODEL_CARD.md): reference checkpoint, network dimensions and limits.
+- [Data provenance](DATA_PROVENANCE.md): precisely which measurement artifacts are available and missing.
 
-The [main README](../README.md) contains installation and commands.
+Install and run commands are in the [repository README](../README.md).

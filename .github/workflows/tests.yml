@@ -17,5 +17,7 @@ jobs:
       - run: python -m compileall -q src run.py
       - name: Smoke-test released checkpoint inference
         run: python run.py benchmark --controllers both --difficulty hard --obstacles 2 --episodes 2 --csv results/ci_smoke.csv --json results/ci_smoke.json
-      - name: Checkpoint observation/action compatibility
-        run: python -m pytest tests/test_checkpoint.py tests/test_benchmarks.py
+      - name: Checkpoint and baseline behavior
+        run: python -m pytest tests/test_checkpoint.py tests/test_baseline_behavior.py tests/test_benchmarks.py
+      - name: Smoke-test 19D stress and legacy baseline
+        run: python run.py benchmark --controllers potential_legacy --history single --layout uniform --difficulty hard --obstacles 2 --episodes 1 --csv results/ci_legacy.csv --json results/ci_legacy.json

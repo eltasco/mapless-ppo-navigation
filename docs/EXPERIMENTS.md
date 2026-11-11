@@ -8,13 +8,13 @@ During development, the experiments progressed through single-obstacle navigatio
 
 ## Local paired PPO vs. potential-field benchmark (11 November 2026)
 
-The author supplied the console output of:
+The archived local run used:
 
 ```bash
-python run.py benchmark --controllers both --difficulty hard --obstacles 2-5 --episodes 500
+python run.py benchmark --controllers both_legacy --difficulty hard --obstacles 2-5 --episodes 500
 ```
 
-This runs the **published PPO checkpoint and the untuned potential-field baseline** on the same seed range per obstacle-count setting. The supplied output records the following values (500 episodes for each controller/scenario):
+The legacy controller was forward-only and **not calibrated**; it is preserved under `--controllers potential_legacy`. The archived console transcript records the following values (500 episodes for each controller/scenario):
 
 | Obstacles | Controller | Successes | Collisions | Timeouts | Wilson 95% success interval |
 |--:|:--|--:|--:|--:|:--|
@@ -29,7 +29,7 @@ This runs the **published PPO checkpoint and the untuned potential-field baselin
 
 Across the equally weighted set of four scenario configurations, PPO reached 1,817/2,000 goals (90.85%), while the potential-field baseline reached 149/2,000 (7.45%). The latter recorded no collisions but timed out 1,851 times; PPO collided 111 times and timed out 72 times. These are **observational comparisons for this simulated distribution**, not an ablation establishing the causal benefit of observation history or the risk reward term.
 
-The archived results are a **transcription of the supplied local console output** (not an independent rerun in the repository packaging environment). See [`paired_benchmark_summary.csv`](../results/paired_benchmark_summary.csv), [`paired_benchmark_summary.json`](../results/paired_benchmark_summary.json), and [console output](../results/reported_benchmark_output.txt). The underlying raw per-episode `paired_benchmark.csv/json` files were not supplied, so individual trajectories, paired discordance counts, per-episode variance, and statistical paired tests are not reported.
+For the exact provenance of the historical aggregate results and the limits of their verification, see [data provenance](DATA_PROVENANCE.md). The old comparison is **not** evidence of a superior learned controller relative to a calibrated classical planner. The revised baseline is evaluated separately after validation-only gain selection.
 
 ## Reported results
 

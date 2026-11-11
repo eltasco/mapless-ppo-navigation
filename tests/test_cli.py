@@ -46,3 +46,20 @@ def test_benchmark_and_ablation_options():
     assert bench.lidar_noise == pytest.approx(0.05)
     train = parser.parse_args(["train", "scratch", "hard", "2-5", "10000", "models/new", "--history", "single", "--risk-weight", "0", "--eval-every", "1000"])
     assert train.history == "single" and train.risk_weight == 0 and train.eval_every == 1000
+
+
+def test_new_cli_options():
+    parser = build_parser()
+    e = parser.parse_args(["eval", "best", "hard", "5", "--history", "single", "--layout", "uniform", "--lidar-noise", "0.04"])
+    assert e.history == "single" and e.layout == "uniform" and e.lidar_noise == 0.04
+    b = parser.parse_args(["benchmark", "--controllers", "potential_legacy", "--history", "single"])
+    assert b.controllers == "potential_legacy" and b.history == "single"
+    t = parser.parse_args(["tune-baseline", "--seed-start", "30000", "--episodes", "20"])
+    assert t.episodes == 20 and t.seed_start == 30000
+    tr = parser.parse_args(["train", "scratch", "mixed", "2-5", "10000", "models/example", "--validation-episodes", "50", "--observation-scale", "fixed"])
+    assert tr.validation_episodes == 50 and tr.observation_scale == "fixed"
+
+
+def test_historical_paired_controller_alias():
+    args = build_parser().parse_args(["benchmark", "--controllers", "both_legacy"])
+    assert args.controllers == "both_legacy"

@@ -43,6 +43,6 @@ The model is **not validated for use on real robots**. The simulator assumes per
 
 The 190,464 cumulative timesteps and learning rate 0.0001 are checkpoint metadata, not a sufficient recipe for reproducing the full multi-stage curriculum. The original model is trained on unnormalized sensor distances and a risk reward calculated with post-update heading; these implementation conventions are preserved for compatibility. A non-risk model or 19-D policy must be separately trained. No hardware collision guarantee is implied.
 
-## Local comparative evaluation
+## Benchmark provenance
 
-The author supplied a successful local benchmark run using this checkpoint (PPO vs. a fixed-parameter potential-field controller, four scene configurations × 500 episodes). Aggregate outcomes are listed in [`EXPERIMENTS.md`](EXPERIMENTS.md), with raw console provenance and limitations clearly labeled. This benchmark does not establish out-of-distribution robustness or robot-level safety.
+The recorded PPO measurements are **in-distribution simulation results**, and the early untuned potential-field comparison is only exploratory. A redesigned, separately tunable controller is available, but no tuned-controller measurements are included in this release. See [data provenance](DATA_PROVENANCE.md) for available and missing original measurement artifacts.

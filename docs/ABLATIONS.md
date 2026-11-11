@@ -1,61 +1,33 @@
-# Controlled training ablations
+# Controlled PPO ablation protocol
 
-The included `navigation_ppo.zip` is a frozen reference checkpoint. Removing
-history or changing the training reward **cannot** be tested by simply editing
-its inputs or recompiling its source: a fair ablation requires independent
-policies trained under the same budget and evaluated on held-out seeds.
+The frozen reference checkpoint uses a 57-element history (`stack`) and a risk reward coefficient of 1.5. A change in input history, risk shaping or observation normalization **requires retraining**, not simply toggling an inference flag.
 
-These examples are **protocols, not precomputed experiments**. They use one
-seed to illustrate the setup. For a more credible study, repeat with at least
-three independent training seeds (`--seed 42`, `43`, `44`, etc.) and report
-mean and standard deviation. Do not select the best run after inspecting test
-seeds.
+## Three variants × three training seeds
 
-## Three single-budget configurations
+Run the generator in dry-run mode to inspect all nine jobs before committing CPU time:
 
 ```bash
-# Default: 57-D fixed-lag observation and closing-speed risk penalty
-python run.py train scratch mixed 2-5 200000 models/ablation_full_seed42 --seed 42 --history stack --risk-weight 1.5 --lr 0.0003 --eval-every 10000 --tensorboard-log runs
-
-# No history: only the current 19-D observation; requires new network weights
-python run.py train scratch mixed 2-5 200000 models/ablation_no_history_seed42 --seed 42 --history single --risk-weight 1.5 --lr 0.0003 --eval-every 10000 --tensorboard-log runs
-
-# No closing-speed risk penalty; geometry and observations unchanged
-python run.py train scratch mixed 2-5 200000 models/ablation_no_risk_seed42 --seed 42 --history stack --risk-weight 0 --lr 0.0003 --eval-every 10000 --tensorboard-log runs
+python scripts/run_ablations.py
+python scripts/run_ablations.py --execute
 ```
 
-Install logging with `python -m pip install -e ".[test,logging]"` and inspect
-training progress with `tensorboard --logdir runs`. The validation callback
-saves periodic evaluation traces and a validation-best checkpoint; held-out
-episodes starting from seed 60000 should be reserved for the final comparison.
+Each job trains 200,000 nominal PPO steps on the same procedural family with seeds 42, 43, 44, then evaluates on the held-out seed range 60,000–60,499. The three variants are: **full** (57D, risk weight 1.5), **no history** (19D, weight 1.5) and **no risk term** (57D, weight 0). The examples are new protocols and **not a recreation of the staged training schedule** that produced the shipped checkpoint.
 
-## Compare using identical evaluation seeds
+The optional `--tensorboard-log runs` enables PPO training curves (install `.[logging]`). `--eval-every 10000` selects validation-best checkpoints with **50 episodes for each obstacle count** on fixed seeds from 20,000, not a single noisy 10-episode five-obstacle validation. The command also retains the final checkpoint; both should be analyzed with transparent selection rules.
+
+## Evaluate any variant on the same scenarios
 
 ```bash
-python run.py eval models/ablation_full_seed42 hard 5 --episodes 500 --seed-start 60000 --history stack --csv results/ablation_full.csv
-python run.py eval models/ablation_no_history_seed42 hard 5 --episodes 500 --seed-start 60000 --history single --csv results/ablation_no_history.csv
-python run.py eval models/ablation_no_risk_seed42 hard 5 --episodes 500 --seed-start 60000 --history stack --csv results/ablation_no_risk.csv
+python run.py benchmark --controllers ppo --model models/ablation_no_history_seed42.zip --history single --difficulty hard --obstacles 2-5 --episodes 500
+python run.py eval models/ablation_no_history_seed42.zip hard 5 --history single --layout uniform --episodes 500
 ```
 
-Compare success, collision, timeout and training efficiency. The original
-checkpoint's historical path differs from the above flat 200k-step curriculum,
-so these ablations **must not** be labeled as an exact reproduction of the
-published checkpoint. Sensitivity to observation normalization (e.g.
-`VecNormalize`) would also require *retraining* and versioned normalization
-statistics; never apply a newly fitted normalizer to the bundled checkpoint.
+Both evaluation commands now share exactly the same episode execution loop and accept the same stress settings.
 
-## Checkpoint provenance and limitations
+## Optional feature scaling for new training
 
-The serialized reference checkpoint records **190,464 cumulative timesteps**,
-`learning_rate=0.0001`, and 64×64 actor/critic MLP architectures. Intermediate
-checkpoints, original TensorBoard event files and a complete original training
-configuration manifest were not supplied. The documented development stages
-(1 obstacle, frame history, mixed layouts, risk penalty, 3 obstacles, 2–5
-obstacles at lower LR) are based on contemporaneous experiment notes, not
-reconstructable from the final ZIP alone. Consequently **bitwise or statistical
-reproduction of the historical training trajectory is not claimed**.
+`--observation-scale fixed` rescales goal distance by 5 m and LiDAR distances by the 3 m sensor maximum, preserving sine/cosine bearing. It is **not** running-statistics `VecNormalize`; there are no learned statistics to serialize. Checkpoint JSON sidecars record the choice and validation rejects mismatched settings. The released PPO weights must use raw, unnormalized inputs.
 
-The simulator still uses ideal unnormalized metric distances. Any change to
-reward timing (post-update heading), range ordering or normalization can break
-comparison with the frozen policy. These are compatibility constraints, not
-necessarily best engineering choices for training a new system.
+## What cannot be concluded from these scripts alone
+
+No ablation success rate, improvement, training-seed variance or OOD robustness claim is made without running the jobs and publishing their episode-level data. See [data provenance](DATA_PROVENANCE.md).
