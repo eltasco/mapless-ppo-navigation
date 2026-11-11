@@ -1,4 +1,7 @@
-"""Unified command-line interface, with evaluation, visualization and training commands."""
+"""Unified command-line interface, with evaluation, visualization and training commands.
+
+The CLI groups seeded evaluation, visual rollouts, and optional PPO training in one entry point. The 'best' alias resolves to the bundled reference policy.
+"""
 
 from __future__ import annotations
 
